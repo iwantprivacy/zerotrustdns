@@ -10,10 +10,10 @@
 
 import { downloadLists, parseDomains } from "./lib/lists.js";
 import { syncLists, deleteAllLists, upsertRule, deleteRule, getLists, getRules } from "./lib/cloudflare.js";
-import { BLOCKLIST_URLS, ALLOWLIST_URLS, LIST_ITEM_LIMIT, DRY_RUN } from "./lib/config.js";
+import { BLOCKLIST_URLS, ALLOWLIST_URLS, LIST_ITEM_LIMIT } from "./lib/config.js";
 
 const args = process.argv.slice(2);
-const isDryRun = args.includes("--dry") || DRY_RUN;
+const isDryRun = args.includes("--dry");
 const isDelete = args.includes("--delete");
 
 if (isDelete) {
