@@ -4,6 +4,9 @@ on:
     - cron: "0 3 * * *"  # Tự chạy mỗi ngày lúc 3am
   workflow_dispatch:       # Cho phép chạy thủ công
 
+permissions:
+  contents: read
+
 jobs:
   update:
     runs-on: ubuntu-latest
@@ -13,7 +16,13 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - run: npm install && npm start
+      - run: npm ci
+      - run: npm test
+      - run: npm start
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_LIST_ITEM_LIMIT: ${{ vars.CLOUDFLARE_LIST_ITEM_LIMIT }}
+          BLOCK_PAGE_ENABLED: ${{ vars.BLOCK_PAGE_ENABLED }}
+          BLOCKLIST_URLS: ${{ secrets.BLOCKLIST_URLS }}
+          ALLOWLIST_URLS: ${{ secrets.ALLOWLIST_URLS }}

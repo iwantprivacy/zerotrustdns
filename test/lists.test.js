@@ -1,0 +1,86 @@
+import { describe, it } from "node:test";
+import assert from "node:assert/strict";
+import {
+  parseDomains,
+  normalizeDomain,
+  isValidDomain,
+  isComment,
+  isRetryableDownloadStatus,
+} from "../lib/lists.js";
+
+describe("isValidDomain", () => {
+  it("accepts normal domains", () => {
+    assert.equal(isValidDomain("example.com"), true);
+    assert.equal(isValidDomain("sub.example.co.uk"), true);
+    assert.equal(isValidDomain("xn--abc-123.example.vn"), true);
+  });
+  it("rejects garbage", () => {
+    assert.equal(isValidDomain(""), false);
+    assert.equal(isValidDomain("localhost"), false);
+    assert.equal(isValidDomain("-bad.com"), false);
+    assert.equal(isValidDomain("bad..com"), false);
+    assert.equal(isValidDomain("has space.com"), false);
+    assert.equal(isValidDomain("UPPER.COM"), false);
+  });
+});
+
+describe("isComment", () => {
+  it("detects comment prefixes", () => {
+    assert.equal(isComment("# hosts file"), true);
+    assert.equal(isComment("! adblock title"), true);
+    assert.equal(isComment("// comment"), true);
+    assert.equal(isComment("/* block */"), true);
+    assert.equal(isComment("example.com"), false);
+  });
+});
+
+describe("normalizeDomain", () => {
+  it("strips hosts-file prefixes", () => {
+    assert.equal(normalizeDomain("0.0.0.0 ads.example.com"), "ads.example.com");
+    assert.equal(normalizeDomain("127.0.0.1 tracker.example.com"), "tracker.example.com");
+  });
+  it("strips adblock syntax and wildcards", () => {
+    assert.equal(normalizeDomain("||ads.example.com^"), "ads.example.com");
+    assert.equal(normalizeDomain("||ads.example.com^$third-party"), "ads.example.com");
+    assert.equal(normalizeDomain("*.ads.example.com"), "ads.example.com");
+  });
+  it("strips @@|| allowlist exceptions", () => {
+    assert.equal(normalizeDomain("@@||good.example.com^", true), "good.example.com");
+  });
+});
+
+describe("parseDomains", () => {
+  it("dedupes and skips comments/invalid lines", () => {
+    const out = parseDomains("# title\n! comment\nads.example.com\nads.example.com\nnot a domain\n", "", 100);
+    assert.deepEqual(out, ["ads.example.com"]);
+  });
+  it("parses hosts + adblock formats", () => {
+    const out = parseDomains("0.0.0.0 a.example.com\n||b.example.com^\n*.c.example.com\n", "", 100);
+    assert.deepEqual(out, ["a.example.com", "b.example.com", "c.example.com"]);
+  });
+  it("excludes allowlisted domains", () => {
+    const out = parseDomains("good.example.com\nbad.example.com\n", "good.example.com\n", 100);
+    assert.deepEqual(out, ["bad.example.com"]);
+  });
+  it("collapses subdomains when the parent is blocked or allowlisted", () => {
+    const blocked = parseDomains("example.com\nsub.example.com\n", "", 100);
+    assert.deepEqual(blocked, ["example.com"]);
+    const allowed = parseDomains("sub.example.com\nother.example.com\n", "sub.example.com\n", 100);
+    assert.deepEqual(allowed, ["other.example.com"]);
+  });
+  it("respects the item limit", () => {
+    const out = parseDomains("a.example.com\nb.example.com\nc.example.com\n", "", 2);
+    assert.deepEqual(out, ["a.example.com", "b.example.com"]);
+  });
+});
+
+describe("isRetryableDownloadStatus", () => {
+  it("retries 408/425/429/5xx only", () => {
+    for (const s of [408, 425, 429, 500, 502, 503, 504, 599]) {
+      assert.equal(isRetryableDownloadStatus(s), true, `expected retry for ${s}`);
+    }
+    for (const s of [200, 400, 401, 403, 404, 422, 301]) {
+      assert.equal(isRetryableDownloadStatus(s), false, `expected no retry for ${s}`);
+    }
+  });
+});
