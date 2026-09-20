@@ -150,6 +150,38 @@ describe("syncLists", () => {
     assert.deepEqual(mutations, []);
   });
 
+  it("compacts obsolete managed lists before applying the quota check", async () => {
+    const lists = Array.from({ length: 183 }, (_, index) => ({
+      id: `managed-${index + 1}`,
+      name: `zerotrustdns List - Chunk ${index + 1}`,
+      type: "DOMAIN",
+    }));
+    const items = new Map(lists.map(({ id }) => [id, []]));
+    globalThis.fetch = async (url, options) => {
+      const parsed = new URL(url);
+      const method = options.method ?? "GET";
+      if (method === "GET" && parsed.pathname.endsWith("/lists")) {
+        return jsonResponse({ success: true, result: lists });
+      }
+      if (method === "GET" && parsed.pathname.endsWith("/items")) {
+        const id = parsed.pathname.split("/").at(-2);
+        return jsonResponse({ success: true, result: items.get(id).map((value) => ({ value })) });
+      }
+      if (method === "PATCH") {
+        const id = parsed.pathname.split("/").at(-1);
+        const body = JSON.parse(options.body);
+        items.set(id, [...items.get(id), ...(body.append ?? []).map(({ value }) => value)]);
+        return jsonResponse({ success: true, result: {} });
+      }
+      throw new Error(`unexpected ${method} ${parsed.pathname}`);
+    };
+
+    const result = await syncLists(["new.example.com"]);
+    assert.equal(result.createdLists.length, 0);
+    assert.equal(result.obsoleteLists.length, 182);
+    assert.deepEqual(items.get("managed-1"), ["new.example.com"]);
+  });
+
   it("rejects a suspicious large shrink before any list mutation", async () => {
     const existingItems = Array.from({ length: 1000 }, (_, index) => `existing-${index}.example.com`);
     let mutations = 0;
