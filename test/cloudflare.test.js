@@ -129,9 +129,20 @@ describe("Cloudflare pagination", () => {
 describe("Cloudflare resource ownership", () => {
   it("only treats exact managed names and DOMAIN lists as owned", () => {
     assert.equal(isManagedList({ type: "DOMAIN", name: "zerotrustdns List - Chunk 1" }), true);
+    assert.equal(isManagedList({ type: "DOMAIN", name: "zerotrustdns List - Chunk 1", description: "" }), true);
+    assert.equal(
+      isManagedList({ type: "DOMAIN", name: "zerotrustdns List - Chunk 1", description: "owned by another tool" }),
+      false
+    );
+    assert.equal(
+      isManagedList({ type: "DOMAIN", name: "zerotrustdns List - Chunk 1", description: { owner: "other" } }),
+      false
+    );
     assert.equal(isManagedList({ type: "EMAIL", name: "zerotrustdns List - Chunk 1" }), false);
     assert.equal(isManagedList({ type: "DOMAIN", name: "zerotrustdns List - backup" }), false);
     assert.equal(isManagedRule({ name: "zerotrustdns Filter Lists" }), true);
+    assert.equal(isManagedRule({ name: "zerotrustdns Filter Lists", description: "owned by another tool" }), false);
+    assert.equal(isManagedRule({ name: "zerotrustdns Filter Lists", description: { owner: "other" } }), false);
     assert.equal(isManagedRule({ name: "zerotrustdns Filter Lists - backup" }), false);
   });
 });
@@ -158,6 +169,69 @@ describe("syncLists", () => {
 
     await assert.rejects(syncLists(["new.example.com"]), /quota would be exceeded/);
     assert.deepEqual(mutations, []);
+  });
+
+  it("fails closed on duplicate managed list names", async () => {
+    let itemReads = 0;
+    globalThis.fetch = async (url) => {
+      const parsed = new URL(url);
+      if (parsed.pathname.endsWith("/lists")) {
+        return jsonResponse({
+          success: true,
+          result: [
+            { id: "l1", name: "zerotrustdns List - Chunk 1", type: "DOMAIN" },
+            { id: "l2", name: "zerotrustdns List - Chunk 1", type: "DOMAIN" },
+          ],
+        });
+      }
+      itemReads += 1;
+      throw new Error(`unexpected item read ${parsed.pathname}`);
+    };
+
+    await assert.rejects(syncLists(["new.example.com"]), /Duplicate managed Cloudflare list names/);
+    assert.equal(itemReads, 0);
+  });
+
+  it("fails closed on a foreign description using a managed list name", async () => {
+    globalThis.fetch = async (url) => {
+      const parsed = new URL(url);
+      if (parsed.pathname.endsWith("/lists")) {
+        return jsonResponse({
+          success: true,
+          result: [{
+            id: "foreign",
+            name: "zerotrustdns List - Chunk 1",
+            description: "owned by another tool",
+            type: "DOMAIN",
+          }],
+        });
+      }
+      throw new Error(`unexpected ${parsed.pathname}`);
+    };
+
+    await assert.rejects(syncLists(["new.example.com"]), /ownership collision/);
+  });
+
+  it("rejects a created list whose provider identity does not match the request", async () => {
+    const deleted = [];
+    globalThis.fetch = async (url, options) => {
+      const parsed = new URL(url);
+      const method = options.method ?? "GET";
+      if (method === "GET" && parsed.pathname.endsWith("/lists")) {
+        return jsonResponse({ success: true, result: [] });
+      }
+      if (method === "POST" && parsed.pathname.endsWith("/lists")) {
+        return jsonResponse({ success: true, result: { id: "created-but-malformed" } });
+      }
+      if (method === "DELETE" && parsed.pathname.endsWith("/lists/created-but-malformed")) {
+        deleted.push(parsed.pathname);
+        return new Response(null, { status: 204 });
+      }
+      throw new Error(`unexpected ${method} ${parsed.pathname}`);
+    };
+
+    await assert.rejects(syncLists(["new.example.com"]), /invalid identity for created list/);
+    assert.deepEqual(deleted, ["/client/v4/accounts/undefined/gateway/lists/created-but-malformed"]);
   });
 
   it("compacts obsolete managed lists before applying the quota check", async () => {
@@ -200,6 +274,7 @@ describe("syncLists", () => {
       type: "DOMAIN",
     }));
     const items = new Map(lists.map(({ id }, index) => [id, [domains[index]]]));
+    const patchBodies = [];
 
     globalThis.fetch = async (url, options) => {
       const parsed = new URL(url);
@@ -214,6 +289,7 @@ describe("syncLists", () => {
       if (method === "PATCH") {
         const id = parsed.pathname.split("/").at(-1);
         const body = JSON.parse(options.body);
+        patchBodies.push(body);
         const current = items.get(id).filter((value) => !(body.remove ?? []).includes(value));
         items.set(id, [...current, ...(body.append ?? []).map(({ value }) => value)]);
         return jsonResponse({ success: true, result: {} });
@@ -226,6 +302,9 @@ describe("syncLists", () => {
     assert.equal(result.obsoleteLists.length, 300);
     assert.deepEqual(items.get("managed-1"), domains);
     assert.deepEqual(items.get("managed-2"), [domains[1]]);
+    for (const body of patchBodies) {
+      assert.equal((body.remove ?? []).some((value) => (body.append ?? []).some(({ value: added }) => added === value)), false);
+    }
   });
 
   it("rejects a suspicious large shrink before any list mutation", async () => {
@@ -488,6 +567,79 @@ describe("syncLists", () => {
 });
 
 describe("upsertRule", () => {
+  it("fails closed on a foreign rule using the managed name", async () => {
+    globalThis.fetch = async (url) => {
+      const parsed = new URL(url);
+      if (parsed.pathname.endsWith("/rules")) {
+        return jsonResponse({
+          success: true,
+          result: [{
+            id: "foreign-rule",
+            name: "zerotrustdns Filter Lists",
+            description: "owned by another tool",
+          }],
+        });
+      }
+      throw new Error(`unexpected ${parsed.pathname}`);
+    };
+
+    await assert.rejects(upsertRule([{ id: "l1" }]), /rule ownership collision/);
+  });
+
+  it("marks definitive rule write failures safe for list rollback", async () => {
+    globalThis.fetch = async (url, options) => {
+      const parsed = new URL(url);
+      const method = options.method ?? "GET";
+      if (method === "GET") {
+        return jsonResponse({
+          success: true,
+          result: [{ id: "r1", name: "zerotrustdns Filter Lists", description: "Managed by zerotrustdns. Do not rename this rule." }],
+          result_info: { page: 1, total_count: 1, total_pages: 1 },
+        });
+      }
+      if (method === "PUT") return jsonResponse({ success: false, errors: [{ message: "forbidden" }] }, 403);
+      throw new Error(`unexpected ${method} ${parsed.pathname}`);
+    };
+
+    await assert.rejects(
+      upsertRule([{ id: "l1" }]),
+      (error) => {
+        assert.equal(error.ruleMutationAttempted, true);
+        assert.equal(error.ruleMutationAmbiguous, false);
+        return true;
+      }
+    );
+  });
+
+  it("marks transport failures during rule writes ambiguous", async () => {
+    globalThis.fetch = async (url, options) => {
+      const parsed = new URL(url);
+      const method = options.method ?? "GET";
+      if (method === "GET") {
+        return jsonResponse({
+          success: true,
+          result: [{ id: "r1", name: "zerotrustdns Filter Lists", description: "Managed by zerotrustdns. Do not rename this rule." }],
+          result_info: { page: 1, total_count: 1, total_pages: 1 },
+        });
+      }
+      if (method === "PUT") {
+        const error = new TypeError("connection reset after write");
+        error.cause = { code: "ECONNRESET" };
+        throw error;
+      }
+      throw new Error(`unexpected ${method} ${parsed.pathname}`);
+    };
+
+    await assert.rejects(
+      upsertRule([{ id: "l1" }]),
+      (error) => {
+        assert.equal(error.ruleMutationAttempted, true);
+        assert.equal(error.ruleMutationAmbiguous, true);
+        return true;
+      }
+    );
+  });
+
   it("updates one canonical rule and removes duplicate exact-name rules", async () => {
     const calls = [];
     let rules = [

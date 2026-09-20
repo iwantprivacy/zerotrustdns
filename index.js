@@ -65,6 +65,11 @@ export async function main(args = process.argv.slice(2)) {
   console.log("Parsing domains...");
   const domains = parseDomains(blocklistRaw, allowlistRaw, LIST_ITEM_LIMIT);
   console.log(`→ ${domains.length} unique domains to block`);
+  if (domains.truncated) {
+    console.warn(
+      `WARNING: item limit ${LIST_ITEM_LIMIT} reached; ${domains.rawCandidatesNotProcessed} raw candidates were beyond the limit; estimated uncovered candidates: ${domains.omittedUncoveredCount}`
+    );
+  }
 
   if (domains.length === 0) {
     throw new Error("0 domains after parsing — refusing to sync an empty list (would wipe existing blocks)");
@@ -72,7 +77,6 @@ export async function main(args = process.argv.slice(2)) {
 
   if (isDryRun) {
     console.log("Dry run — no changes made to Cloudflare.");
-    console.log(`Preview: ${domains.length} domains, first 5: ${domains.slice(0, 5).join(", ")}`);
     return;
   }
 
@@ -90,7 +94,7 @@ export async function main(args = process.argv.slice(2)) {
     const activeLists = [...listsById.values()].filter(({ id }) => !obsoleteIds.has(id));
     await upsertRule(activeLists);
   } catch (error) {
-    if (!error.ruleMutationAttempted) await rollback();
+    if (!error.ruleMutationAmbiguous) await rollback();
     else console.error("  Rule mutation outcome is ambiguous; leaving staged list state for the next reconciliation run.");
     throw error;
   }
@@ -109,7 +113,7 @@ if (isDirectExecution) {
   try {
     await main();
   } catch (err) {
-    // Never print credentials — API errors contain status + path only.
+    // Never print credentials; provider details are bounded and sanitized by the API client.
     console.error(`ERROR: ${err.message}`);
     process.exitCode = 1;
   }

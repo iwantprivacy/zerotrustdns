@@ -40,10 +40,12 @@ describe("normalizeDomain", () => {
   it("strips hosts-file prefixes", () => {
     assert.equal(normalizeDomain("0.0.0.0 ads.example.com"), "ads.example.com");
     assert.equal(normalizeDomain("127.0.0.1 tracker.example.com"), "tracker.example.com");
+    assert.equal(normalizeDomain("a.example.com/path"), "");
   });
   it("strips adblock syntax and wildcards", () => {
     assert.equal(normalizeDomain("||ads.example.com^"), "ads.example.com");
     assert.equal(normalizeDomain("||ads.example.com^$third-party"), "ads.example.com");
+    assert.equal(normalizeDomain("||ads.example.com$important"), "ads.example.com");
     assert.equal(normalizeDomain("*.ads.example.com"), "ads.example.com");
   });
   it("strips @@|| allowlist exceptions", () => {
@@ -61,8 +63,12 @@ describe("parseDomains", () => {
     assert.deepEqual(out, ["ads.example.com"]);
   });
   it("parses hosts + adblock formats", () => {
-    const out = parseDomains("0.0.0.0 a.example.com\n||b.example.com^\n*.c.example.com\n", "", 100);
-    assert.deepEqual(out, ["a.example.com", "b.example.com", "c.example.com"]);
+    const out = parseDomains(
+      "103.179.189.35 a.example.com b.example.com # inline comment\n||c.example.com$important\n*.d.example.com\n",
+      "",
+      100
+    );
+    assert.deepEqual(out, ["a.example.com", "b.example.com", "c.example.com", "d.example.com"]);
   });
   it("excludes allowlisted domains", () => {
     const out = parseDomains("good.example.com\nbad.example.com\n", "good.example.com\n", 100);
@@ -86,6 +92,8 @@ describe("parseDomains", () => {
   it("respects the item limit", () => {
     const out = parseDomains("a.example.com\nb.example.com\nc.example.com\n", "", 2);
     assert.deepEqual(out, ["a.example.com", "b.example.com"]);
+    assert.equal(out.truncated, true);
+    assert.equal(out.candidateCount, 3);
   });
 });
 

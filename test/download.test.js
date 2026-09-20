@@ -92,6 +92,42 @@ describe("download safety", () => {
         /unexpected error-document response/
       );
     }
+
+    await assert.rejects(
+      fetchOne("https://sources.example/truncated", {
+        fetchImpl: async () => response("example.com\n", 200, { "content-length": "100" }),
+        sleepImpl: async () => {},
+      }),
+      /response body length mismatch/
+    );
+  });
+
+  it("enforces aggregate source limits", async () => {
+    const fetchImpl = async () => response("example.com\n");
+    await assert.rejects(
+      downloadLists(
+        ["https://sources.example/allow-1", "https://sources.example/allow-2"],
+        [],
+        { maxSources: 1, fetchImpl, sleepImpl: async () => {} }
+      ),
+      /source count exceeds maximum/
+    );
+    await assert.rejects(
+      downloadLists(
+        ["https://sources.example/allow"],
+        [],
+        { maxTotalBytes: 1, fetchImpl, sleepImpl: async () => {} }
+      ),
+      /(?:aggregate allowlist source size exceeds maximum|response exceeds maximum size)/
+    );
+    await assert.rejects(
+      downloadLists(
+        ["https://sources.example/allow"],
+        ["https://sources.example/block"],
+        { maxSources: 1, fetchImpl, sleepImpl: async () => {} }
+      ),
+      /blocklist source count exceeds maximum/
+    );
   });
 
   it("retries a native transport error exposed through cause.code", async () => {

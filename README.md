@@ -2,10 +2,12 @@
 
 Chặn quảng cáo ở cấp DNS bằng Cloudflare Zero Trust Gateway — miễn phí, không cần cài app hay extension; có thể thêm các blocklist tùy chọn.
 
-Mặc định project được cấu hình cho tối đa 300 Lists × 1.000 entry mỗi List,
-tức khoảng 300.000 domain. Nếu tài khoản có quota thấp hơn hoặc đã dùng Lists
-cho mục đích khác, hãy giảm các biến giới hạn; chương trình sẽ dừng ở bước
-preflight thay vì ghi dở dang.
+Mặc định project được cấu hình theo policy của project cho tối đa 300 Lists ×
+1.000 entry mỗi List, tức khoảng 300.000 domain. Đây không phải cam kết quota
+chung cho mọi Cloudflare account; nếu account có quota thấp hơn hoặc đã dùng
+Lists cho mục đích khác, hãy giảm các biến giới hạn. Chương trình lập kế hoạch
+trước khi ghi, nhưng các thao tác provider vẫn có thể cần compensation nếu một
+request giữa chừng thất bại.
 
 > **Fork-friendly:** repo này không chứa Account ID, API token hay tài nguyên
 > Cloudflare của tác giả. Mỗi người fork cần cấu hình credentials của **chính
@@ -96,9 +98,14 @@ Nếu một blocklist hoặc allowlist source bị lỗi, chương trình sẽ d
 
 ### Bước 6 — Chạy workflow
 
-Vào tab **Actions → Update blocklists → Run workflow**
+Vào tab **Actions → Update blocklists → Run workflow**, chọn branch `main` và
+bật input **confirm** để xác nhận đây là lần đồng bộ production. Workflow chỉ
+cho phép chạy trên `main`; lịch tự động không cần input này.
 
 Chờ workflow hoàn tất. Sau đó blocklist sẽ tự cập nhật theo lịch hằng ngày.
+
+Nếu account có bật required reviewers cho environment `production`, GitHub sẽ
+chờ phê duyệt trước khi cấp quyền chạy job đồng bộ.
 
 ## Chạy local
 
@@ -113,7 +120,9 @@ npm run dry       # xem trước, không gọi Cloudflare API
 npm start         # đồng bộ thật vào tài khoản Cloudflare của bạn
 ```
 
-`npm run dry` không cần credentials Cloudflare. Lệnh `npm start` và
+`npm run dry` không cần credentials Cloudflare và chỉ in số lượng domain, không
+in các domain mẫu để tránh làm lộ dữ liệu từ source riêng. Nếu chạm giới hạn
+item, lệnh sẽ cảnh báo số candidate không được đồng bộ. Lệnh `npm start` và
 `npm run delete` chỉ được chạy sau khi đã cấu hình credentials của tài khoản
 riêng; `npm run delete` là thao tác xóa các list/rule có tên chính xác do
 `zerotrustdns` quản lý. `--dry` và `--delete` không được dùng cùng nhau; option
