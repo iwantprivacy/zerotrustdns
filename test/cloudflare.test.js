@@ -77,8 +77,15 @@ describe("Cloudflare pagination", () => {
     await assert.rejects(getLists(), /pagination incomplete/);
   });
 
-  it("fails closed when pagination metadata is absent", async () => {
+  it("accepts a short single-page response when pagination metadata is omitted", async () => {
     globalThis.fetch = async () => jsonResponse({ success: true, result: [{ id: "l1" }] });
+    const { result } = await getLists();
+    assert.deepEqual(result.map(({ id }) => id), ["l1"]);
+  });
+
+  it("fails closed when metadata is omitted at the page-size boundary", async () => {
+    const result = Array.from({ length: 1000 }, (_, index) => ({ id: `l${index}` }));
+    globalThis.fetch = async () => jsonResponse({ success: true, result });
     await assert.rejects(getLists(), /pagination metadata missing/);
   });
 
