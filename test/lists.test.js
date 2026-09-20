@@ -13,6 +13,7 @@ describe("isValidDomain", () => {
     assert.equal(isValidDomain("example.com"), true);
     assert.equal(isValidDomain("sub.example.co.uk"), true);
     assert.equal(isValidDomain("xn--e1afmkfd.example.vn"), true);
+    assert.equal(isValidDomain("103.179.189.35"), false);
   });
   it("rejects garbage", () => {
     assert.equal(isValidDomain(""), false);
