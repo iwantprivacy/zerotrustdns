@@ -41,6 +41,16 @@ describe("Cloudflare status and retry helpers", () => {
     const parsed = retryAfterMs({ headers: new Headers({ "retry-after": future }) });
     assert.ok(parsed >= 0 && parsed <= 60_000);
   });
+
+  it("preserves provider error details for non-success responses", async () => {
+    globalThis.fetch = async () =>
+      jsonResponse(
+        { success: false, errors: [{ code: 1000, message: "list limit exceeded" }] },
+        400
+      );
+
+    await assert.rejects(getLists(), /Cloudflare API error 400 .*list limit exceeded/);
+  });
 });
 
 describe("Cloudflare pagination", () => {
