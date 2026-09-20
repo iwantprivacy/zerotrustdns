@@ -182,6 +182,42 @@ describe("syncLists", () => {
     assert.deepEqual(items.get("managed-1"), ["new.example.com"]);
   });
 
+  it("repacks desired domains when they are spread across too many managed lists", async () => {
+    const domains = Array.from({ length: 183 }, (_, index) => `domain-${index + 1}.example.com`);
+    const lists = domains.map((domain, index) => ({
+      id: `managed-${index + 1}`,
+      name: `zerotrustdns List - Chunk ${index + 1}`,
+      type: "DOMAIN",
+    }));
+    const items = new Map(lists.map(({ id }, index) => [id, [domains[index]]]));
+
+    globalThis.fetch = async (url, options) => {
+      const parsed = new URL(url);
+      const method = options.method ?? "GET";
+      if (method === "GET" && parsed.pathname.endsWith("/lists")) {
+        return jsonResponse({ success: true, result: lists });
+      }
+      if (method === "GET" && parsed.pathname.endsWith("/items")) {
+        const id = parsed.pathname.split("/").at(-2);
+        return jsonResponse({ success: true, result: items.get(id).map((value) => ({ value })) });
+      }
+      if (method === "PATCH") {
+        const id = parsed.pathname.split("/").at(-1);
+        const body = JSON.parse(options.body);
+        const current = items.get(id).filter((value) => !(body.remove ?? []).includes(value));
+        items.set(id, [...current, ...(body.append ?? []).map(({ value }) => value)]);
+        return jsonResponse({ success: true, result: {} });
+      }
+      throw new Error(`unexpected ${method} ${parsed.pathname}`);
+    };
+
+    const result = await syncLists(domains);
+    assert.equal(result.createdLists.length, 0);
+    assert.equal(result.obsoleteLists.length, 182);
+    assert.deepEqual(items.get("managed-1"), domains);
+    assert.deepEqual(items.get("managed-2"), [domains[1]]);
+  });
+
   it("rejects a suspicious large shrink before any list mutation", async () => {
     const existingItems = Array.from({ length: 1000 }, (_, index) => `existing-${index}.example.com`);
     let mutations = 0;
