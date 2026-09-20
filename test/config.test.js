@@ -28,9 +28,9 @@ describe("parseItemLimit", () => {
 });
 
 describe("quota defaults", () => {
-  it("stay within the documented Standard list capacity", () => {
-    assert.equal(DEFAULT_LIST_ACCOUNT_LIMIT, 100);
-    assert.equal(DEFAULT_ITEM_LIMIT, 100_000);
+  it("use the 300-list project default capacity", () => {
+    assert.equal(DEFAULT_LIST_ACCOUNT_LIMIT, 300);
+    assert.equal(DEFAULT_ITEM_LIMIT, 300_000);
   });
 });
 

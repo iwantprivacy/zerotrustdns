@@ -2,9 +2,9 @@
 
 Chặn quảng cáo ở cấp DNS bằng Cloudflare Zero Trust Gateway — miễn phí, không cần cài app hay extension; có thể thêm các blocklist tùy chọn.
 
-Với giới hạn Standard thường gặp của Cloudflare Gateway là 100 Lists và 1.000
-entry mỗi List, giới hạn lý thuyết là 100.000 domain. Nếu tài khoản đã dùng
-Lists cho mục đích khác, hãy giảm giới hạn hoặc để chương trình dừng ở bước
+Mặc định project được cấu hình cho tối đa 300 Lists × 1.000 entry mỗi List,
+tức khoảng 300.000 domain. Nếu tài khoản có quota thấp hơn hoặc đã dùng Lists
+cho mục đích khác, hãy giảm các biến giới hạn; chương trình sẽ dừng ở bước
 preflight thay vì ghi dở dang.
 
 > **Fork-friendly:** repo này không chứa Account ID, API token hay tài nguyên
@@ -79,8 +79,8 @@ Thêm lần lượt 2 secret:
 - `CLOUDFLARE_ACCOUNT_ID` — dán Account ID vừa copy ở Bước 3
 
 Các cấu hình tùy chọn:
-- Repository variable `CLOUDFLARE_LIST_ITEM_LIMIT` — giới hạn số domain, mặc định `100000`
-- Repository variable `CLOUDFLARE_LIST_ACCOUNT_LIMIT` — tổng số Lists dành cho project, mặc định `100`
+- Repository variable `CLOUDFLARE_LIST_ITEM_LIMIT` — giới hạn số domain, mặc định `300000`
+- Repository variable `CLOUDFLARE_LIST_ACCOUNT_LIMIT` — tổng số Lists dành cho project, mặc định `300`
 - Repository variable `CLOUDFLARE_MIN_DOMAIN_RETENTION_RATIO` — dừng nếu số domain mới thấp hơn tỷ lệ này so với trạng thái hiện tại, mặc định `0.5`
 - Repository variable `CLOUDFLARE_ALLOW_LARGE_SHRINK` — đặt `1` nếu cố ý chấp nhận giảm blocklist mạnh, mặc định `0`
 - Repository variable `BLOCK_PAGE_ENABLED` — đặt `1` để bật block page, mặc định `0`

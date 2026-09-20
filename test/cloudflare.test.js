@@ -129,7 +129,7 @@ describe("Cloudflare resource ownership", () => {
 describe("syncLists", () => {
   it("rejects an over-quota plan before any list mutation", async () => {
     const mutations = [];
-    const existing = Array.from({ length: 100 }, (_, index) => ({
+    const existing = Array.from({ length: 300 }, (_, index) => ({
       id: `unrelated-${index}`,
       name: `unrelated-${index}`,
       type: "DOMAIN",
@@ -142,7 +142,7 @@ describe("syncLists", () => {
       return jsonResponse({
         success: true,
         result: existing,
-        result_info: { page: 1, per_page: 1000, total_count: 100, total_pages: 1 },
+        result_info: { page: 1, per_page: 1000, total_count: 300, total_pages: 1 },
       });
     };
 
@@ -183,7 +183,7 @@ describe("syncLists", () => {
   });
 
   it("repacks desired domains when they are spread across too many managed lists", async () => {
-    const domains = Array.from({ length: 183 }, (_, index) => `domain-${index + 1}.example.com`);
+    const domains = Array.from({ length: 301 }, (_, index) => `domain-${index + 1}.example.com`);
     const lists = domains.map((domain, index) => ({
       id: `managed-${index + 1}`,
       name: `zerotrustdns List - Chunk ${index + 1}`,
@@ -213,7 +213,7 @@ describe("syncLists", () => {
 
     const result = await syncLists(domains);
     assert.equal(result.createdLists.length, 0);
-    assert.equal(result.obsoleteLists.length, 182);
+    assert.equal(result.obsoleteLists.length, 300);
     assert.deepEqual(items.get("managed-1"), domains);
     assert.deepEqual(items.get("managed-2"), [domains[1]]);
   });
