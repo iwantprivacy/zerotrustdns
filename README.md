@@ -2,12 +2,19 @@
 
 Chặn quảng cáo ở cấp DNS bằng Cloudflare Zero Trust Gateway — miễn phí, không cần cài app hay extension; có thể thêm các blocklist tùy chọn.
 
-Hoạt động với gói miễn phí của Cloudflare (lên đến 300.000 domain bị chặn).
+Với giới hạn Standard thường gặp của Cloudflare Gateway là 100 Lists và 1.000
+entry mỗi List, giới hạn lý thuyết là 100.000 domain. Nếu tài khoản đã dùng
+Lists cho mục đích khác, hãy giảm giới hạn hoặc để chương trình dừng ở bước
+preflight thay vì ghi dở dang.
 
 > **Fork-friendly:** repo này không chứa Account ID, API token hay tài nguyên
 > Cloudflare của tác giả. Mỗi người fork cần cấu hình credentials của **chính
 > tài khoản Cloudflare của mình** trong fork đó; không commit credentials vào
 > code hoặc file `.env`.
+>
+> Một Cloudflare account chỉ nên được quản lý bởi một fork của project này,
+> vì các list/rule do tool sở hữu được nhận diện bằng namespace tên
+> `zerotrustdns`.
 
 ## Cách hoạt động
 
@@ -72,13 +79,20 @@ Thêm lần lượt 2 secret:
 - `CLOUDFLARE_ACCOUNT_ID` — dán Account ID vừa copy ở Bước 3
 
 Các cấu hình tùy chọn:
-- Repository variable `CLOUDFLARE_LIST_ITEM_LIMIT` — giới hạn số domain, mặc định `300000`
+- Repository variable `CLOUDFLARE_LIST_ITEM_LIMIT` — giới hạn số domain, mặc định `100000`
+- Repository variable `CLOUDFLARE_LIST_ACCOUNT_LIMIT` — tổng số Lists dành cho project, mặc định `100`
+- Repository variable `CLOUDFLARE_MIN_DOMAIN_RETENTION_RATIO` — dừng nếu số domain mới thấp hơn tỷ lệ này so với trạng thái hiện tại, mặc định `0.5`
+- Repository variable `CLOUDFLARE_ALLOW_LARGE_SHRINK` — đặt `1` nếu cố ý chấp nhận giảm blocklist mạnh, mặc định `0`
 - Repository variable `BLOCK_PAGE_ENABLED` — đặt `1` để bật block page, mặc định `0`
 - Secret `BLOCKLIST_URLS` — các URL blocklist tùy chỉnh, mỗi URL một dòng; để trống để dùng danh sách mặc định
 - Secret `ALLOWLIST_URLS` — các URL allowlist tùy chỉnh, mỗi URL một dòng; để trống để dùng danh sách mặc định
 
 Chỉ cần hai secret bắt buộc là fork có thể chạy với cấu hình mặc định. Không
 có giá trị nào trong code tự trỏ vào tài khoản Cloudflare của repo gốc.
+
+Mỗi URL tùy chỉnh phải là `https://` và không được chứa username/password.
+Nếu một blocklist hoặc allowlist source bị lỗi, chương trình sẽ dừng trước khi
+đọc hoặc thay đổi Cloudflare để tránh đồng bộ một danh sách bị thiếu.
 
 ### Bước 6 — Chạy workflow
 
@@ -101,7 +115,9 @@ npm start         # đồng bộ thật vào tài khoản Cloudflare của bạn
 
 `npm run dry` không cần credentials Cloudflare. Lệnh `npm start` và
 `npm run delete` chỉ được chạy sau khi đã cấu hình credentials của tài khoản
-riêng; `npm run delete` là thao tác xóa các list/rule do `zerotrustdns` quản lý.
+riêng; `npm run delete` là thao tác xóa các list/rule có tên chính xác do
+`zerotrustdns` quản lý. `--dry` và `--delete` không được dùng cùng nhau; option
+không được nhận diện cũng sẽ làm chương trình dừng thay vì chạy mode mặc định.
 
 ## Cấu hình DNS trên thiết bị
 

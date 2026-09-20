@@ -1,7 +1,7 @@
 {
   "name": "zerotrustdns",
   "version": "1.0.0",
-  "description": "Chặn quảng cáo và cờ bạc ở cấp DNS bằng Cloudflare Zero Trust Gateway",
+  "description": "Chặn quảng cáo ở cấp DNS bằng Cloudflare Zero Trust Gateway",
   "type": "module",
   "scripts": {
     "start": "node index.js",

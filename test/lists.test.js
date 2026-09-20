@@ -20,7 +20,8 @@ describe("isValidDomain", () => {
     assert.equal(isValidDomain("-bad.com"), false);
     assert.equal(isValidDomain("bad..com"), false);
     assert.equal(isValidDomain("has space.com"), false);
-    assert.equal(isValidDomain("UPPER.COM"), false);
+    assert.equal(isValidDomain("UPPER.COM"), true);
+    assert.equal(isValidDomain("example.xn--p1ai"), true);
   });
 });
 
@@ -47,6 +48,10 @@ describe("normalizeDomain", () => {
   it("strips @@|| allowlist exceptions", () => {
     assert.equal(normalizeDomain("@@||good.example.com^", true), "good.example.com");
   });
+  it("canonicalizes case, trailing dots, and Unicode IDNs", () => {
+    assert.equal(normalizeDomain("ADS.Example.COM."), "ads.example.com");
+    assert.equal(normalizeDomain("пример.рф"), "xn--e1afmkfd.xn--p1ai");
+  });
 });
 
 describe("parseDomains", () => {
@@ -67,6 +72,15 @@ describe("parseDomains", () => {
     assert.deepEqual(blocked, ["example.com"]);
     const allowed = parseDomains("sub.example.com\nother.example.com\n", "sub.example.com\n", 100);
     assert.deepEqual(allowed, ["other.example.com"]);
+  });
+  it("collapses parents independently of input order", () => {
+    const parentFirst = parseDomains("example.com\nsub.example.com\n", "", 100);
+    const childFirst = parseDomains("sub.example.com\nexample.com\n", "", 100);
+    assert.deepEqual(childFirst, parentFirst);
+  });
+  it("lets a descendant allowlist protect against an ancestor block", () => {
+    const out = parseDomains("example.com\ngood.example.com\nbad.example.com\n", "good.example.com\n", 100);
+    assert.deepEqual(out, ["bad.example.com"]);
   });
   it("respects the item limit", () => {
     const out = parseDomains("a.example.com\nb.example.com\nc.example.com\n", "", 2);
