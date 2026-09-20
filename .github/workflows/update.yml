@@ -3,12 +3,6 @@ on:
   schedule:
     - cron: "0 3 * * *"  # Tự chạy mỗi ngày lúc 3am
   workflow_dispatch:
-    inputs:
-      confirm:
-        description: "Confirm a production Cloudflare sync on main"
-        required: true
-        type: boolean
-        default: false
 
 permissions:
   contents: read
@@ -19,7 +13,7 @@ concurrency:
 
 jobs:
   update:
-    if: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'schedule' || inputs.confirm == true) }}
+    if: ${{ github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-24.04
     environment: production
     timeout-minutes: 60

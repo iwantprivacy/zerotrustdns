@@ -98,9 +98,8 @@ Nếu một blocklist hoặc allowlist source bị lỗi, chương trình sẽ d
 
 ### Bước 6 — Chạy workflow
 
-Vào tab **Actions → Update blocklists → Run workflow**, chọn branch `main` và
-bật input **confirm** để xác nhận đây là lần đồng bộ production. Workflow chỉ
-cho phép chạy trên `main`; lịch tự động không cần input này.
+Vào tab **Actions → Update blocklists → Run workflow** và chọn branch `main`.
+Workflow chỉ cho phép chạy trên `main`.
 
 Chờ workflow hoàn tất. Sau đó blocklist sẽ tự cập nhật theo lịch hằng ngày.
 
