@@ -100,10 +100,12 @@ export async function main(args = process.argv.slice(2)) {
   }
 
   if (obsoleteLists.length) await deleteAllLists(obsoleteLists);
-  const { result: verifiedLists } = await getLists();
-  const remainingObsolete = verifiedLists.filter(({ id }) => obsoleteIds.has(id));
-  if (remainingObsolete.length > 0) {
-    throw new Error("Cloudflare list deletion verification failed");
+  if (obsoleteLists.length) {
+    const { result: verifiedLists } = await getLists();
+    const remainingObsolete = verifiedLists.filter(({ id }) => obsoleteIds.has(id));
+    if (remainingObsolete.length > 0) {
+      throw new Error("Cloudflare list deletion verification failed");
+    }
   }
   console.log("Done.");
 }

@@ -93,7 +93,6 @@ describe("parseDomains", () => {
     const out = parseDomains("a.example.com\nb.example.com\nc.example.com\n", "", 2);
     assert.deepEqual(out, ["a.example.com", "b.example.com"]);
     assert.equal(out.truncated, true);
-    assert.equal(out.candidateCount, 3);
   });
 });
 

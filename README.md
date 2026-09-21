@@ -149,15 +149,6 @@ Sau khi chạy workflow xong, vào **Zero Trust → Networks → Resolvers & Pro
 2. Vào cài đặt router → đổi DNS server thành địa chỉ IPv4
 3. Tất cả thiết bị trong mạng sẽ tự động được chặn quảng cáo
 
-## Thêm blocklist tùy chọn
-
-Nếu muốn thêm blocklist khác, vào **Settings → Secrets and variables → Actions → New repository secret**, thêm secret tên `BLOCKLIST_URLS` với nội dung là các URL, mỗi URL một dòng:
-
-```
-https://example.com/blocklist1.txt
-https://example.com/blocklist2.txt
-```
-
 ---
 
 Dự án lấy cảm hứng từ [cloudflare-gateway-pihole-scripts](https://github.com/mrrfv/cloudflare-gateway-pihole-scripts) by mrrfv.

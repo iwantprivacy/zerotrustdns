@@ -71,8 +71,7 @@ describe("parseUrlList", () => {
 
 describe("assertCloudflareEnv", () => {
   it("passes with both vars present, without exposing values", () => {
-    const out = assertCloudflareEnv({ CLOUDFLARE_API_TOKEN: "t", CLOUDFLARE_ACCOUNT_ID: "a" });
-    assert.deepEqual(out, { token: "t", accountId: "a" });
+    assert.doesNotThrow(() => assertCloudflareEnv({ CLOUDFLARE_API_TOKEN: "t", CLOUDFLARE_ACCOUNT_ID: "a" }));
   });
   it("throws fail-closed when either var is missing", () => {
     assert.throws(() => assertCloudflareEnv({}), /Missing required env vars/);

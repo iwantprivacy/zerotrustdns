@@ -130,6 +130,17 @@ describe("download safety", () => {
     );
   });
 
+  it("treats null download limits as unset", async () => {
+    const fetchImpl = async () => response("example.com\n");
+    const result = await downloadLists(
+      ["https://sources.example/allow"],
+      ["https://sources.example/block"],
+      { maxSources: null, maxTotalBytes: null, fetchImpl, sleepImpl: async () => {} }
+    );
+    assert.equal(result.allowlistRaw, "example.com\n");
+    assert.equal(result.blocklistRaw, "example.com\n");
+  });
+
   it("retries a native transport error exposed through cause.code", async () => {
     let attempts = 0;
     const text = await fetchOne("https://sources.example/retry", {

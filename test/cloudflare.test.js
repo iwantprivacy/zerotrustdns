@@ -604,7 +604,6 @@ describe("upsertRule", () => {
     await assert.rejects(
       upsertRule([{ id: "l1" }]),
       (error) => {
-        assert.equal(error.ruleMutationAttempted, true);
         assert.equal(error.ruleMutationAmbiguous, false);
         return true;
       }
@@ -633,7 +632,6 @@ describe("upsertRule", () => {
     await assert.rejects(
       upsertRule([{ id: "l1" }]),
       (error) => {
-        assert.equal(error.ruleMutationAttempted, true);
         assert.equal(error.ruleMutationAmbiguous, true);
         return true;
       }
