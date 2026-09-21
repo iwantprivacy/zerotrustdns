@@ -1,11 +1,33 @@
 import { afterEach, describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { main } from "../index.js";
+import { main, parseArgs } from "../index.js";
 
 const originalFetch = globalThis.fetch;
 
 afterEach(() => {
   globalThis.fetch = originalFetch;
+});
+
+describe("CLI parsing", () => {
+  it("accepts the supported modes", () => {
+    assert.deepEqual(parseArgs([]), { isDryRun: false });
+    assert.deepEqual(parseArgs(["--dry"]), { isDryRun: true });
+  });
+
+  it("rejects unknown options", () => {
+    assert.throws(() => parseArgs(["--delte"]), /Unknown option/);
+    assert.throws(() => parseArgs(["--delete"]), /Unknown option/);
+  });
+
+  it("rejects unknown options before any network access", async () => {
+    let fetchCalls = 0;
+    globalThis.fetch = async () => {
+      fetchCalls += 1;
+      throw new Error("network should not be reached");
+    };
+    await assert.rejects(main(["--delete"]), /Unknown option/);
+    assert.equal(fetchCalls, 0);
+  });
 });
 
 describe("main orchestration", () => {

@@ -6,7 +6,6 @@
   "scripts": {
     "start": "node index.js",
     "dry": "node index.js --dry",
-    "delete": "node index.js --delete",
     "test": "node --test test/*.test.js"
   },
   "engines": {

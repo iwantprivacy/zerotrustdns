@@ -5,7 +5,6 @@
  * Usage:
  *   node index.js          → download lists + sync to Cloudflare
  *   node index.js --dry    → download lists + preview changes (no API calls, no creds needed)
- *   node index.js --delete → delete all zerotrustdns lists and rules from Cloudflare
  */
 
 import { fileURLToPath } from "node:url";
@@ -15,47 +14,22 @@ import {
   syncLists,
   deleteAllLists,
   upsertRule,
-  deleteRule,
   getLists,
-  getRules,
   isManagedList,
-  isManagedRule,
 } from "./lib/cloudflare.js";
 import { BLOCKLIST_URLS, ALLOWLIST_URLS, LIST_ITEM_LIMIT, assertCloudflareEnv } from "./lib/config.js";
-import { parseArgs } from "./lib/cli.js";
+
+export function parseArgs(args) {
+  const unknown = args.find((arg) => arg !== "--dry");
+  if (unknown) throw new Error(`Unknown option: ${unknown}`);
+  return { isDryRun: args.includes("--dry") };
+}
 
 export async function main(args = process.argv.slice(2)) {
-  const { isDryRun, isDelete } = parseArgs(args);
+  const { isDryRun } = parseArgs(args);
 
   // Dry-run downloads and parses only. Every Cloudflare mutation path requires credentials.
   if (!isDryRun) assertCloudflareEnv();
-
-  if (isDelete) {
-    console.log("Deleting all zerotrustdns lists and rules from Cloudflare...");
-
-    const { result: rules } = await getRules();
-    const rulesToDelete = rules.filter(isManagedRule);
-    for (const rule of rulesToDelete) {
-      console.log(`Deleting rule: ${rule.name}`);
-      await deleteRule(rule.id);
-    }
-
-    const { result: lists } = await getLists();
-    const listsToDelete = lists.filter(isManagedList);
-    if (listsToDelete.length) {
-      console.log(`Deleting ${listsToDelete.length} lists...`);
-      await deleteAllLists(listsToDelete);
-    }
-
-    const { result: remainingRules } = await getRules();
-    const { result: remainingLists } = await getLists();
-    if (remainingRules.some(isManagedRule) || remainingLists.some(isManagedList)) {
-      throw new Error("Delete verification failed: managed Cloudflare resources remain");
-    }
-
-    console.log("Done.");
-    return;
-  }
 
   // Step 1: Download sequentially — a source failure aborts the run before API access.
   console.log("Downloading filter lists...");
