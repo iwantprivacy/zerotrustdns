@@ -1,0 +1,21 @@
+[package]
+name = "zerotrustdns"
+version = "2.0.0"
+edition = "2024"
+rust-version = "1.85"
+description = "Cloudflare Zero Trust Gateway blocklist updater"
+license = "MIT"
+
+[dependencies]
+anyhow = "1"
+dotenvy = "0.15"
+idna = "1.1"
+reqwest = { version = "0.13.5", default-features = false, features = ["blocking", "brotli", "deflate", "gzip", "json", "rustls"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+url = "2"
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true

@@ -8,3 +8,4 @@ node_modules/
 *.p12
 *.pfx
 credentials*.json
+/target/
